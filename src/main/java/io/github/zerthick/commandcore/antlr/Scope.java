@@ -85,4 +85,8 @@ public class Scope {
     public boolean isGlobalScope() {
         return parent == null;
     }
+
+    public Scope getParent() {
+        return parent;
+    }
 }

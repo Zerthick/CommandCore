@@ -3,6 +3,7 @@ package io.github.zerthick.commandcore.antlr;
 import io.github.zerthick.commandskript.CommandSkriptBaseVisitor;
 import io.github.zerthick.commandskript.CommandSkriptParser;
 import org.slf4j.Logger;
+import org.spongepowered.api.Sponge;
 import org.spongepowered.api.command.CommandSource;
 import org.spongepowered.api.command.source.ConsoleSource;
 
@@ -457,5 +458,172 @@ public class CKVisitor extends CommandSkriptBaseVisitor<CKValue> {
         return CKValue.VOID;
     }
 
+    // Print '(' expression ')'      #printFunctionCall
+    @Override
+    public CKValue visitPrintFunctionCall(CommandSkriptParser.PrintFunctionCallContext ctx) {
 
+        CKValue val = visit(ctx.expression());
+
+        logger.info(val.toString());
+
+        return CKValue.VOID;
+    }
+
+    // Check '(' expression ')'      #checkFunctionCall
+    @Override
+    public CKValue visitCheckFunctionCall(CommandSkriptParser.CheckFunctionCallContext ctx) {
+
+        CKValue val = visit(ctx.expression());
+
+        if (!val.isString()) {
+            throw new CKEvalException("Permission to check must resolve to a string", ctx);
+        }
+
+        return new CKValue(commandSource.hasPermission(val.asString()));
+    }
+
+    // Size '(' expression ')'       #sizeFunctionCall
+    @Override
+    public CKValue visitSizeFunctionCall(CommandSkriptParser.SizeFunctionCallContext ctx) {
+
+        CKValue val = this.visit(ctx.expression());
+
+        if (val.isString()) {
+            return new CKValue(val.asString().length());
+        }
+
+        if (val.isList()) {
+            return new CKValue(val.asList().size());
+        }
+
+        throw new CKEvalException(ctx);
+    }
+
+    // Execute   '(' exprList ')'    #executeFuntionCall
+    @Override
+    public CKValue visitExecuteFuntionCall(CommandSkriptParser.ExecuteFuntionCallContext ctx) {
+        for (CommandSkriptParser.ExpressionContext ex : ctx.exprList().expression()) {
+            CKValue val = visit(ex);
+            if (!val.isString()) {
+                throw new CKEvalException("Command to execute must resolve to a string", ctx);
+            }
+            Sponge.getCommandManager().process(commandSource, val.asString());
+        }
+        return CKValue.VOID;
+    }
+
+    // ConsoleEx '(' exprList ')'    #consoleExFuntionCall
+    @Override
+    public CKValue visitConsoleExFuntionCall(CommandSkriptParser.ConsoleExFuntionCallContext ctx) {
+        for (CommandSkriptParser.ExpressionContext ex : ctx.exprList().expression()) {
+            CKValue val = visit(ex);
+            if (!val.isString()) {
+                throw new CKEvalException("Command to execute must resolve to a string", ctx);
+            }
+            Sponge.getCommandManager().process(consoleSource, val.asString());
+        }
+        return CKValue.VOID;
+    }
+
+    // ifStatement
+    //  : ifStat elseIfStat* elseStat? End
+    //  ;
+    //
+    // ifStat
+    //  : If expression Do block
+    //  ;
+    //
+    // elseIfStat
+    //  : Else If expression Do block
+    //  ;
+    //
+    // elseStat
+    //  : Else Do block
+    //  ;
+    @Override
+    public CKValue visitIfStatement(CommandSkriptParser.IfStatementContext ctx) {
+
+        // if ...
+        CKValue condition = visit(ctx.ifStat().expression());
+        if (!condition.isBoolean()) {
+            throw new CKEvalException(ctx);
+        }
+
+        if (condition.asBoolean()) {
+            return visit(ctx.ifStat().block());
+        }
+
+        // else if ...
+        for (int i = 0; i < ctx.elseIfStat().size(); i++) {
+
+            condition = visit(ctx.elseIfStat(i).expression());
+            if (!condition.isBoolean()) {
+                throw new CKEvalException(ctx);
+            }
+
+            if (condition.asBoolean()) {
+                return visit(ctx.elseIfStat(i).block());
+            }
+        }
+
+        // else ...
+        if (ctx.elseStat() != null) {
+            return visit(ctx.elseStat().block());
+        }
+
+        return CKValue.VOID;
+    }
+
+    // block
+    // : statement*
+    // ;
+    @Override
+    public CKValue visitBlock(CommandSkriptParser.BlockContext ctx) {
+
+        scope = new Scope(scope); // create new local scope
+        for (CommandSkriptParser.StatementContext sx : ctx.statement()) {
+            visit(sx);
+        }
+        scope = scope.getParent();
+        return CKValue.VOID;
+    }
+
+    // forStatement
+    // : For Variable '=' expression To expression Do block End
+    // ;
+    @Override
+    public CKValue visitForStatement(CommandSkriptParser.ForStatementContext ctx) {
+
+        CKValue startVal = visit(ctx.expression(0));
+        CKValue endVal = visit(ctx.expression(1));
+
+        if (!startVal.isNumber() && !endVal.isNumber()) {
+            throw new CKEvalException(ctx);
+        }
+
+        int start = startVal.asDouble().intValue();
+        int stop = endVal.asDouble().intValue();
+        for (int i = start; i <= stop; i++) {
+            scope.assignVariable(ctx.Variable().getText(), new CKValue(i));
+            visit(ctx.block());
+        }
+        return CKValue.VOID;
+    }
+
+    // whileStatement
+    // : While expression Do block End
+    // ;
+    @Override
+    public CKValue visitWhileStatement(CommandSkriptParser.WhileStatementContext ctx) {
+
+        CKValue condition = visit(ctx.expression());
+        if (!condition.isBoolean()) {
+            throw new CKEvalException(ctx);
+        }
+
+        while (visit(ctx.expression()).asBoolean()) {
+            visit(ctx.block());
+        }
+        return CKValue.VOID;
+    }
 }
