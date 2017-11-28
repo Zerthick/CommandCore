@@ -9,6 +9,6 @@ public class CKEvalException extends RuntimeException {
     }
 
     public CKEvalException(String msg, ParserRuleContext ctx) {
-        super(msg + ": " + ctx.getText() + "\tline:"+ctx.start.getLine());
+        super(msg + ": " + ctx.getText() + "    line:" + ctx.start.getLine());
     }
 }

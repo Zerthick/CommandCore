@@ -1,11 +1,13 @@
 package io.github.zerthick.commandcore.antlr;
 
+import io.github.zerthick.commandcore.antlr.scope.Scope;
 import io.github.zerthick.commandskript.CommandSkriptBaseVisitor;
 import io.github.zerthick.commandskript.CommandSkriptParser;
 import org.slf4j.Logger;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.command.CommandSource;
 import org.spongepowered.api.command.source.ConsoleSource;
+import org.spongepowered.api.entity.living.player.Player;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -362,9 +364,12 @@ public class CKVisitor extends CommandSkriptBaseVisitor<CKValue> {
     @Override
     public CKValue visitListExpression(CommandSkriptParser.ListExpressionContext ctx) {
         CKValue val = visit(ctx.list());
-        CKValue index = visit(ctx.index());
 
-        return resolveIndex(val, index, ctx);
+        if (ctx.index() != null) {
+            CKValue index = visit(ctx.index());
+            return resolveIndex(val, index, ctx);
+        }
+        return val;
     }
 
     // Variable index?                          #variableExpression
@@ -379,13 +384,30 @@ public class CKVisitor extends CommandSkriptBaseVisitor<CKValue> {
             if(ctx.index() != null) {
                 CKValue index = visit(ctx.index());
                 return resolveIndex(val, index, ctx);
-            } else {
-                return val;
             }
-
+            return val;
         }
 
         throw new CKEvalException("Variable " + id + " undefined in current scope", ctx);
+    }
+
+    // Variable index?                          #variableExpression
+    @Override
+    public CKValue visitSpecialExpression(CommandSkriptParser.SpecialExpressionContext ctx) {
+        String id = ctx.Special().getText().substring(1);
+        Optional<CKValue> valOptional = scope.resolveSpecial(id, commandSource);
+
+        if (valOptional.isPresent()) {
+            CKValue val = valOptional.get();
+
+            if (ctx.index() != null) {
+                CKValue index = visit(ctx.index());
+                return resolveIndex(val, index, ctx);
+            }
+            return val;
+        }
+
+        throw new CKEvalException("Special Variable " + id + " undefined in current scope", ctx);
     }
 
     // Constant index?                          #constantExpression
@@ -400,10 +422,8 @@ public class CKVisitor extends CommandSkriptBaseVisitor<CKValue> {
             if(ctx.index() != null) {
                 CKValue index = visit(ctx.index());
                 return resolveIndex(val, index, ctx);
-            } else {
-                return val;
             }
-
+            return val;
         }
 
         throw new CKEvalException("Constant " + id + " undefined in current scope", ctx);
@@ -412,7 +432,10 @@ public class CKVisitor extends CommandSkriptBaseVisitor<CKValue> {
     // String                                   #stringExpression
     @Override
     public CKValue visitStringExpression(CommandSkriptParser.StringExpressionContext ctx) {
-        return new CKValue(ctx.getText());
+
+        String text = ctx.getText();
+
+        return new CKValue(text.substring(1, text.length() - 1));
     }
 
     // '(' expression ')'                       #expressionExpression
@@ -523,6 +546,79 @@ public class CKVisitor extends CommandSkriptBaseVisitor<CKValue> {
             Sponge.getCommandManager().process(consoleSource, val.asString());
         }
         return CKValue.VOID;
+    }
+
+    // Player '(' ')'                #playerFunctionCall
+    @Override
+    public CKValue visitPlayerFunctionCall(CommandSkriptParser.PlayerFunctionCallContext ctx) {
+        return new CKValue(commandSource instanceof Player);
+    }
+
+    // Rand '(' exprList ')'         #randFunctionCall
+    @Override
+    public CKValue visitRandFunctionCall(CommandSkriptParser.RandFunctionCallContext ctx) {
+
+        List<CommandSkriptParser.ExpressionContext> args = ctx.exprList().expression();
+
+        if (args.size() != 2) {
+            throw new CKEvalException(ctx);
+        }
+
+        CKValue lhs = visit(args.get(0));
+        CKValue rhs = visit(args.get(1));
+
+        if (!lhs.isNumber() || !rhs.isNumber()) {
+            throw new CKEvalException(ctx);
+        }
+
+        double rand = Math.random() * rhs.asDouble() + lhs.asDouble();
+
+        return new CKValue(rand);
+    }
+
+    // Round '(' expression ')'      #roundFunctionCall
+    @Override
+    public CKValue visitRoundFunctionCall(CommandSkriptParser.RoundFunctionCallContext ctx) {
+
+        CKValue val = visit(ctx.expression());
+
+        if (!val.isNumber()) {
+            throw new CKEvalException(ctx);
+        }
+
+        long round = Math.round(val.asDouble());
+
+        return new CKValue(round);
+    }
+
+    // Floor '(' expression ')'      #floorFunctionCall
+    @Override
+    public CKValue visitFloorFunctionCall(CommandSkriptParser.FloorFunctionCallContext ctx) {
+
+        CKValue val = visit(ctx.expression());
+
+        if (!val.isNumber()) {
+            throw new CKEvalException(ctx);
+        }
+
+        double round = Math.floor(val.asDouble());
+
+        return new CKValue(round);
+    }
+
+    // Ceil '(' expression ')'       #celiFunctionCall
+    @Override
+    public CKValue visitCeilFunctionCall(CommandSkriptParser.CeilFunctionCallContext ctx) {
+
+        CKValue val = visit(ctx.expression());
+
+        if (!val.isNumber()) {
+            throw new CKEvalException(ctx);
+        }
+
+        double round = Math.ceil(val.asDouble());
+
+        return new CKValue(round);
     }
 
     // ifStatement

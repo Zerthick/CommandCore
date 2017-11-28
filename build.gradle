@@ -26,7 +26,7 @@ spongestart{
 
 dependencies {
     compile 'org.spongepowered:spongeapi:7.0.0-SNAPSHOT'
-    shadow 'com.github.Zerthick:CommandSkript:v1.0.7'
+    shadow 'com.github.Zerthick:CommandSkript:v1.2.0'
     shadow  'org.antlr:antlr4-runtime:4.7'
 }
 

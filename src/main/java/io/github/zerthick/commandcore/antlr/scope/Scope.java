@@ -1,4 +1,8 @@
-package io.github.zerthick.commandcore.antlr;
+package io.github.zerthick.commandcore.antlr.scope;
+
+import io.github.zerthick.commandcore.antlr.CKValue;
+import io.github.zerthick.commandcore.antlr.scope.resolver.ScopeResolver;
+import org.spongepowered.api.command.CommandSource;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -10,6 +14,7 @@ public class Scope {
 
     private Map<String, CKValue> variables;
     private Map<String, CKValue> constants;
+    private Map<String, ScopeResolver> resolves;
 
     public Scope() {
         // constructor for global scope, parent is null
@@ -82,11 +87,34 @@ public class Scope {
         }
     }
 
+    public Optional<CKValue> resolveSpecial(String name, CommandSource source) {
+        CKValue value = null;
+
+        if (resolves.containsKey(name)) {
+            value = resolves.get(name).resolve(source);
+        }
+
+        if (value != null) {
+            // The constant is in this scope
+            return Optional.of(value);
+        } else if (!isGlobalScope()) {
+            // Search for the constant in the parent scope
+            return parent.resolveSpecial(name, source);
+        } else {
+            // Unknown special
+            return Optional.empty();
+        }
+    }
+
     public boolean isGlobalScope() {
         return parent == null;
     }
 
     public Scope getParent() {
         return parent;
+    }
+
+    public void setResolves(Map<String, ScopeResolver> resolves) {
+        this.resolves = resolves;
     }
 }

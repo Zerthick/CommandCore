@@ -112,6 +112,31 @@ public class CKValue implements Comparable<CKValue> {
 
     @Override
     public String toString() {
-        return isNull() ? "NULL" : isVoid() ? "VOID" : String.valueOf(value);
+
+        if (isNull()) {
+            return "NULL";
+        }
+
+        if (isVoid()) {
+            return "VOID";
+        }
+
+        if (isList()) {
+            return asList().toString();
+        }
+
+        if (isNumber()) {
+
+            Double val = asDouble();
+
+            // Value is an int
+            if (val % 1 == 0) {
+                return String.valueOf(val.intValue());
+            }
+
+            return String.valueOf(val);
+        }
+
+        return String.valueOf(value);
     }
 }
