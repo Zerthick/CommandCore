@@ -12,6 +12,8 @@ import org.spongepowered.api.entity.living.player.Player;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class CKVisitor extends CommandSkriptBaseVisitor<CKValue> {
 
@@ -20,6 +22,8 @@ public class CKVisitor extends CommandSkriptBaseVisitor<CKValue> {
     private CommandSource commandSource;
     private ConsoleSource consoleSource;
     private Logger logger;
+
+    private static Pattern interpolationPattern = Pattern.compile("\\$\\{(.*?)}");
 
     public CKVisitor(Scope scope, CommandSource commandSource, ConsoleSource consoleSource, Logger logger) {
         this.scope = scope;
@@ -434,8 +438,28 @@ public class CKVisitor extends CommandSkriptBaseVisitor<CKValue> {
     public CKValue visitStringExpression(CommandSkriptParser.StringExpressionContext ctx) {
 
         String text = ctx.getText();
+        text = text.substring(1, text.length() - 1);
 
-        return new CKValue(text.substring(1, text.length() - 1));
+
+        StringBuffer sb = new StringBuffer();
+        Matcher matcher = interpolationPattern.matcher(text);
+        while (matcher.find()) {
+            String id = matcher.group(1);
+            Optional<CKValue> variableOptional = scope.resolveVariable(id);
+            Optional<CKValue> constantOptional = scope.resolveConstant(id);
+            Optional<CKValue> specialOptional = scope.resolveSpecial(id.substring(1), commandSource);
+
+            if (variableOptional.isPresent()) {
+                matcher.appendReplacement(sb, variableOptional.get().toString());
+            } else if (constantOptional.isPresent()) {
+                matcher.appendReplacement(sb, constantOptional.get().toString());
+            } else if (specialOptional.isPresent()) {
+                matcher.appendReplacement(sb, specialOptional.get().toString());
+            }
+        }
+        matcher.appendTail(sb);
+
+        return new CKValue(sb.toString());
     }
 
     // '(' expression ')'                       #expressionExpression
@@ -721,5 +745,11 @@ public class CKVisitor extends CommandSkriptBaseVisitor<CKValue> {
             visit(ctx.block());
         }
         return CKValue.VOID;
+    }
+
+    // index: '[' expression ']';
+    @Override
+    public CKValue visitIndex(CommandSkriptParser.IndexContext ctx) {
+        return visit(ctx.expression());
     }
 }

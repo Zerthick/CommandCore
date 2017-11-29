@@ -28,7 +28,7 @@ public class MyCommandSkriptService implements CommandSkriptService {
         CommandSkriptLexer lexer = new CommandSkriptLexer(CharStreams.fromString(expression));
         CommandSkriptParser parser = new CommandSkriptParser(new CommonTokenStream(lexer));
 
-        Scope scope = ScopeBuilder.buildScope(commandSource, new String[0]);
+        Scope scope = ScopeBuilder.buildScope(new String[0]);
 
         CKVisitor visitor = new CKVisitor(scope, commandSource, Sponge.getServer().getConsole(), logger);
         return visitor.visit(parser.expression());
