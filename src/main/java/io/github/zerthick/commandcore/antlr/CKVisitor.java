@@ -445,17 +445,25 @@ public class CKVisitor extends CommandSkriptBaseVisitor<CKValue> {
         Matcher matcher = interpolationPattern.matcher(text);
         while (matcher.find()) {
             String id = matcher.group(1);
-            Optional<CKValue> variableOptional = scope.resolveVariable(id);
-            Optional<CKValue> constantOptional = scope.resolveConstant(id);
-            Optional<CKValue> specialOptional = scope.resolveSpecial(id.substring(1), commandSource);
 
-            if (variableOptional.isPresent()) {
-                matcher.appendReplacement(sb, variableOptional.get().toString());
-            } else if (constantOptional.isPresent()) {
-                matcher.appendReplacement(sb, constantOptional.get().toString());
-            } else if (specialOptional.isPresent()) {
-                matcher.appendReplacement(sb, specialOptional.get().toString());
+            // variable
+            if (id.matches("[a-z][a-zA-Z_0-9]*")) {
+                Optional<CKValue> variableOptional = scope.resolveVariable(id);
+                variableOptional.ifPresent(ckValue -> matcher.appendReplacement(sb, ckValue.toString()));
             }
+
+            // constant
+            if (id.matches("[A-Z][a-zA-Z_0-9]*")) {
+                Optional<CKValue> constantOptional = scope.resolveConstant(id);
+                constantOptional.ifPresent(ckValue -> matcher.appendReplacement(sb, ckValue.toString()));
+            }
+
+            // special
+            if (id.matches("_[a-zA-Z_0-9]+")) {
+                Optional<CKValue> specialOptional = scope.resolveSpecial(id.substring(1), commandSource);
+                specialOptional.ifPresent(ckValue -> matcher.appendReplacement(sb, ckValue.toString()));
+            }
+
         }
         matcher.appendTail(sb);
 
