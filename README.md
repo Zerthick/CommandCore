@@ -2,6 +2,9 @@
 CommandCore is a library plugin which allows scripts written in [CommandSkript](https://github.com/Zerthick/CommandSkript)
 to be executed within a Minecraft Server Environment.
 
+In order for scripts to be utilized they sould be located within the `~/config/commandcore` directory or in a sub-directory
+contained within it.
+
 ## Commands:
 
  * `/cktest <expression>` - Evaluates `expression` and prints the result, useful for debugging scripts
