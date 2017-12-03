@@ -12,6 +12,7 @@ import org.spongepowered.api.command.args.GenericArguments;
 import org.spongepowered.api.command.spec.CommandSpec;
 import org.spongepowered.api.config.ConfigDir;
 import org.spongepowered.api.event.Listener;
+import org.spongepowered.api.event.game.GameReloadEvent;
 import org.spongepowered.api.event.game.state.GameInitializationEvent;
 import org.spongepowered.api.event.game.state.GameStartedServerEvent;
 import org.spongepowered.api.plugin.Plugin;
@@ -23,7 +24,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -46,6 +46,8 @@ public class CommandCore {
     @ConfigDir(sharedRoot = false)
     private Path configDir;
 
+    private MyCommandSkriptService myCommandSkriptService;
+
     public Logger getLogger() {
         return logger;
     }
@@ -57,7 +59,9 @@ public class CommandCore {
     @Listener
     public void onServerInit(GameInitializationEvent event) {
 
-        Sponge.getServiceManager().setProvider(this, CommandSkriptService.class, new MyCommandSkriptService(loadSkripts()));
+        myCommandSkriptService = new MyCommandSkriptService(loadSkripts());
+
+        Sponge.getServiceManager().setProvider(this, CommandSkriptService.class, myCommandSkriptService);
     }
 
     @Listener
@@ -85,10 +89,9 @@ public class CommandCore {
                         .description(Text.of("Test the output of a single expression in CommandSkript"))
                         .build(), "cktest");
 
-        Map<String, String> skriptChoices = skriptService.getSkripts().stream().collect(Collectors.toMap(s -> s, s -> s));
         Sponge.getCommandManager().register(this,
                 CommandSpec.builder()
-                        .arguments(GenericArguments.choices(Text.of("skript"), skriptChoices),
+                        .arguments(GenericArguments.choices(Text.of("skript"), skriptService::getSkripts, s -> s),
                                 GenericArguments.optional(GenericArguments.remainingRawJoinedStrings(Text.of("args"))))
                         .executor((src, args) -> {
 
@@ -112,6 +115,11 @@ public class CommandCore {
                 instance.getName() + " version " + instance.getVersion().orElse("")
                         + " enabled!");
 
+    }
+
+    @Listener
+    public void onPluginsReload(GameReloadEvent event) {
+        myCommandSkriptService.setSkripts(loadSkripts());
     }
 
     private Set<Skript> loadSkripts() {

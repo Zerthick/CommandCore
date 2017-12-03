@@ -51,4 +51,8 @@ public class MyCommandSkriptService implements CommandSkriptService {
     public Set<String> getSkripts() {
         return skripts.keySet();
     }
+
+    public void setSkripts(Collection<Skript> skripts) {
+        this.skripts = skripts.stream().collect(Collectors.toMap(Skript::getName, s -> s));
+    }
 }

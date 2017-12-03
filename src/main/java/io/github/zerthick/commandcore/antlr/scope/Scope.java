@@ -25,6 +25,7 @@ public class Scope {
         this.parent = parent;
         variables = new HashMap<>();
         constants = new HashMap<>();
+        resolves = new HashMap<>();
     }
 
     public void assignVariable(String name, CKValue value) {
