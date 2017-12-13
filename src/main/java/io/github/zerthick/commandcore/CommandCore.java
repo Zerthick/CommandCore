@@ -51,7 +51,7 @@ import java.util.stream.Collectors;
         id = "commandcore",
         name = "CommandCore",
         description = "Core Library for CommandSkript Plugins",
-        version = "0.1.0",
+        version = "0.2.0",
         authors = {
                 "Zerthick"
         }
