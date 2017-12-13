@@ -51,7 +51,7 @@ public class Skript {
 
     public void execute(CommandSource commandSource, String[] args, Logger logger) {
 
-        Scope scope = ScopeBuilder.buildScope(args);
+        Scope scope = ScopeBuilder.buildScope(commandSource, args);
 
         CKVisitor visitor = new CKVisitor(scope, commandSource, Sponge.getServer().getConsole(), logger);
         visitor.visit(parser.script());
